@@ -1,0 +1,8 @@
+
+install copy-lib : haskell-qsort-pfm-cxx :
+        <variant>release:<location>./lib
+        <variant>debug:<location>./lib/debug
+        ;
+
+lib haskell-qsort-pfm-cxx : cxx/wrote.cpp : <include>include <link>static ;
+
