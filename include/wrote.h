@@ -7,7 +7,9 @@ extern "C" {
 
 typedef unsigned long* longitr;
 
-void quicksort_(longitr begin, longitr end);
+void quicksort_wrote(longitr begin, longitr end);
+
+void quicksort_stl(longitr begin, longitr end);
 
 #ifdef __cplusplus
 }

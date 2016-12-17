@@ -35,6 +35,8 @@ executable qsort-pfm
                      , criterion
                      , mwc-random
                      , vector
+                     , vector-algorithms
+                     , primitive
   extra-lib-dirs:      ./lib
   extra-libraries:     haskell-qsort-pfm-cxx
   default-language:    Haskell2010

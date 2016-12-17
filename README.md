@@ -10,5 +10,6 @@ http://qiita.com/advent-calendar/2016/haskell-performance
 $ stack init
 $ bjam release
 $ stack build
-$ stack
+
+$ stack exec qsort-pfm
 ```
