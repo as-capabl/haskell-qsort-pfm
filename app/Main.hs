@@ -76,7 +76,7 @@ main =
             env (copyList va orig) $ \_ ->
                 bench "Vector.Argorithms" $ whnfIO $ VectorArgorithms.sort va,
             env (copyList stl orig) $ \_ ->
-                 bench "wrote" $ whnfIO $ CXX.quicksortStl stl 0 numElems
+                 bench "c++_STL" $ whnfIO $ CXX.quicksortStl stl 0 numElems
           ]
       ]
 
