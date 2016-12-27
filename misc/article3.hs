@@ -1,11 +1,31 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module Main where
 
 import Criterion.Main
 import Data.Int
 import Data.Word
-import Data.Foldable (forM_)
+import Data.Bits (xor)
+import Data.Foldable (forM_, foldl')
 import Data.Traversable (forM)
 import qualified System.Random.MWC as MWC
+import qualified Data.Vector.Generic.Mutable as V
+import qualified Data.Vector.Unboxed.Mutable as UV
+import qualified Data.Vector.Storable.Mutable as SV
+import qualified Data.Vector.Mutable as BV
+import qualified Data.Vector.Generic.Mutable as GV
+import Control.Monad.Primitive (RealWorld)
+import System.Exit (die)
+
+import qualified List
+import qualified List2
+import qualified UV
+import qualified BV
+import qualified CXX
+import qualified Data.List as DataList
+import qualified Data.Vector.Algorithms.Intro as VectorArgorithms
+
 
 divideList :: Word64 -> [Word64] -> ([Word64], [Word64])
 divideList x xs = foldr divide ([], []) xs
@@ -54,15 +74,30 @@ quicksortDA l = quicksort' l []
           in
             quicksort' lt (x:gteq')
 
-mapSeq :: [Word64] -> IO ()
--- mapSeq = mapM_ (\x -> x `seq` return ())
-mapSeq l = foldl go (return minBound) l >> return ()
+verifySortImpl :: Word64 -> [IO Word64] -> IO ()
+verifySortImpl parity l0 =
+  do
+    parity' <- go minBound 0 l0
+    if not (parity == parity') then die "parity error" else return ()
   where
-    go mx y =
+    go currentMax currentParity (mx:l) =
       do
         x <- mx
-        if x > y then print "oops!" else return ()
-        return y
+        if x < currentMax then die "order error" else return ()
+        let !parity = currentParity `xor` x
+        go x parity l
+
+    go _ currentParity [] =
+        return currentParity
+
+verifySort :: Word64 -> [Word64] -> IO ()
+verifySort parity l = verifySortImpl parity $ map return l
+
+verifySortVec ::
+    GV.MVector v Word64 =>
+    Word64 -> v RealWorld Word64 -> IO ()
+verifySortVec parity v =
+    verifySortImpl parity $ [GV.unsafeRead v i | i <- [0 .. GV.length v - 1]]
 
 main :: IO ()
 main =
@@ -76,6 +111,8 @@ main =
           do
             MWC.uniform gen :: IO Word64
 
+    let parity = foldl' xor 0 orig
+
     -- Measurement
     defaultMain
       [
@@ -86,12 +123,12 @@ main =
             bench "divide" $ nf quicksortD orig,
             bench "divide+accumulator" $ nf quicksortDA orig
           ],
-        bgroup "reduction-by-mapM_"
+        bgroup "reduction-by-folding"
           [
-            bench "trivial" $ whnfIO (mapSeq $ quicksort00 orig),
-            bench "accumulator" $ whnfIO (mapSeq $ quicksortA orig),
-            bench "divide" $ whnfIO (mapSeq $ quicksortD orig),
-            bench "divide+accumulator" $ whnfIO (mapSeq $ quicksortDA orig)
+            bench "trivial" $ whnfIO (verifySort parity $ quicksort00 orig),
+            bench "accumulator" $ whnfIO (verifySort parity $ quicksortA orig),
+            bench "divide" $ whnfIO (verifySort parity $ quicksortD orig),
+            bench "divide+accumulator" $ whnfIO (verifySort parity $ quicksortDA orig)
           ]
       ]
 
