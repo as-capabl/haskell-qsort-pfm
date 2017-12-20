@@ -62,19 +62,26 @@ verifySortVec ::
 verifySortVec parity v =
     verifySortImpl parity $ [GV.unsafeRead v i | i <- [0 .. GV.length v - 1]]
 
-main :: IO ()
-main =
+makeData ::
+    Int ->
+    IO ([Word64], Word64)
+makeData numElems =
   do
-    let numElems = 500000
-
-    -- Preparation
     orig <- MWC.withSystemRandom $ \gen ->
       do
         forM [0 .. numElems - 1] $ \i ->
           do
             MWC.uniform gen :: IO Word64
     let !parity = foldl' xor 0 orig
-    ioOrig <- newIORef orig
+    return (orig, parity)
+
+main :: IO ()
+main =
+  do
+    let numElems = 500000
+
+    -- Preparation
+    (orig, parity) <- makeData numElems
 
     uv <- UV.new numElems :: IO (UV.IOVector Word64)
     bv <- BV.new numElems :: IO (BV.IOVector Word64)
@@ -87,9 +94,9 @@ main =
       [
         bgroup "list"
           [
-            env (readIORef ioOrig) $ \l ->
-                bench "trivial" $ whnfIO (verifySort parity $ List.quicksort l),
-            env (readIORef ioOrig) $ \l ->
+            env (makeData numElems) $ \(l, p) ->
+                bench "trivial" $ whnfIO (verifySort p $ List.quicksort l),
+            env (return orig) $ \l ->
             bench "improved" $ whnfIO (verifySort parity $ List2.quicksort l)
           ],
         bgroup "vector"
@@ -106,7 +113,7 @@ main =
           ],
         bgroup "library"
           [
-            env (readIORef ioOrig) $ \l ->
+            env (return orig) $ \l ->
                 bench "Data.List" $ whnfIO (verifySort parity $ DataList.sort l),
             env (copyList va orig) $ \_ ->
                 bench "Vector.Argorithms" $ whnfIO $ VectorArgorithms.sort va >> verifySortVec parity va,
